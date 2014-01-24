@@ -16,12 +16,22 @@ module Resque
       include Resque::Plugins::JobStats::Timeseries::Enqueued
       include Resque::Plugins::JobStats::Timeseries::Performed
 
-      def self.extended(base)
-        self.measured_jobs << base
+      def self.add_measured_job(name)
+        Resque.redis.sadd("stats:jobs", name)
+      end
+
+      def self.rem_measured_job(name)
+        Resque.redis.srem("stats:jobs", name)
       end
 
       def self.measured_jobs
-        @measured_jobs ||= []
+        Resque.redis.smembers("stats:jobs").map { |klass_name|
+          begin
+            klass_name.constantize
+          rescue NameError
+            puts "Unable to load constant for #{klass_name}, you may need to load your Rails env."
+          end
+        }.compact
       end
     end
   end
