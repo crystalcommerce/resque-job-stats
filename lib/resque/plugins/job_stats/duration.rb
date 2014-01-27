@@ -28,7 +28,7 @@ module Resque
           Resque.redis.lpush(jobs_duration_key, duration)
           Resque.redis.ltrim(jobs_duration_key, 0, durations_recorded)
           if duration > longest_job
-            set_longest_job(duration)
+            set_longest_job(duration, args)
           end
           true
         end
@@ -47,8 +47,9 @@ module Resque
           Resque.redis.get(longest_job_key).to_f
         end
 
-        def set_longest_job(duration)
+        def set_longest_job(duration, args)
           Resque.redis.set(longest_job_key, duration)
+          Resque.redis.set("#{longest_job_key}:args", args.inspect)
         end
 
         def longest_job_key
