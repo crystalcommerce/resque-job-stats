@@ -27,6 +27,10 @@ module Resque
           Resque::Plugins::JobStats.add_measured_job(self.name)
           Resque.redis.lpush(jobs_duration_key, duration)
           Resque.redis.ltrim(jobs_duration_key, 0, durations_recorded)
+          if duration > longest_job
+            set_longest_job(duration)
+          end
+          true
         end
 
         def durations_recorded
@@ -36,13 +40,20 @@ module Resque
         def job_rolling_avg
           job_times = job_durations
           return 0.0 if job_times.size == 0.0
-          job_times.inject(0.0) {|s,j| s + j} / job_times.size
+          job_times.inject(0.0, &:+) / job_times.size
         end
 
         def longest_job
-          job_durations.max.to_f
+          Resque.redis.get(longest_job_key).to_f
         end
 
+        def set_longest_job(duration)
+          Resque.redis.set(longest_job_key, duration)
+        end
+
+        def longest_job_key
+          "stats:jobs:#{self.name}:longest"
+        end
       end
     end
   end
